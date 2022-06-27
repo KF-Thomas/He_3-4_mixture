@@ -1,0 +1,54 @@
+%% comparison of momentum density of Boltzmann and Fermi-Dirac distrabution
+% in harmonic trap usng the semi classical approximation
+
+% constats
+hebec_constants
+m = const.mhe*3/4;
+hb = const.hb;
+kb = const.kb;
+
+omega = [60 600 605].*2*pi; %trapping frequency
+a0 = sqrt(hb./(m.*omega));
+omega_bar = geomean(omega);
+N = 1e5;%atom number
+T = 1e-6;%temperature
+
+EF = hb.*omega_bar.*(6*N).^(1/3);
+KF = (2*m*EF./hb^2);%fermi wavevector
+mu = find_mu(omega_bar,T,N,EF);
+
+H = @(k,x,y,z) 1/(2*m).*(hb.^2.*k.^2)+m/2.*(omega(1).^2.*x.^2+omega(2).^2.*y.^2+omega(3).^2.*z.^2);
+
+p = @(k,x,y,z) 1/(2*pi)^3.*1./(exp((H(k,x,y,z)-mu)./(kb.*T))+1);
+p_B = @(k,x,y,z) 1/(2*pi)^3.*1./(exp((H(k,x,y,z)-mu)./(kb.*T)));
+
+% set up grid
+x_vec = linspace(a0(1).*-10,a0(1).*10,5e1);
+y_vec = linspace(a0(2).*-10,a0(2).*10,5e1);
+z_vec = linspace(a0(3).*-10,a0(3).*10,5e1);
+[X,Y,Z] = meshgrid(x_vec,y_vec,z_vec);
+
+% Fermi at T=0
+n_F_0 = @(k) N/KF^3*8/pi^2*(1-(k./KF).^2).^(3/2);
+
+% Fermi at finite T
+n_F = @(k) trapz(x_vec,trapz(y_vec,trapz(z_vec,p(k,X,Y,Z))));
+
+%Boltzman
+n_B =  @(k) trapz(x_vec,trapz(y_vec,trapz(z_vec,p_B(k,X,Y,Z))));;
+
+function mu = find_mu(omega_bar,T,N,EF)
+global const
+kb = const.kb;
+hb = const.hb;
+
+mu_temp = linspace(-6.*EF,EF,2e3).';
+N_E = @(E,mu_vec) E.^2./(2*(hb.*omega_bar).^3).*1./(exp((E-mu_vec)./(kb.*T))+1);
+
+E = linspace(0,20.*EF,5e3);
+
+N_temp = abs(trapz(E,N_E(E,mu_temp),2)-N);
+[val,indx] = min(N_temp);
+mu = mu_temp(indx);
+
+end
