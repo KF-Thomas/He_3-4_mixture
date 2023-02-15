@@ -6,33 +6,47 @@ import datetime
 import numpy as np
 import pyximport; pyximport.install() #can direcly use '.so' file instead.
 import ctry2
-# import ctry3 
+
+from tqdm import tqdm 
 
 #----------------
 #Initialisation
 #Note that if the bin size here changed, the bin size in ctry2 should also be changed.
 #[delta_t,delta_x,delta_y]=[0.002,0.1,0.1]
 [delta_t,delta_x,delta_y]=[0.002,0.00013,0.00056] #bin size.
+#[delta_t,delta_x,delta_y]=[0.002,0.00013,0.00042]
 #[delta_t,delta_x,delta_y]=[0.00005,0.0005,0.0005]
 #path='/Users/shijieli/Desktop/project1/csvfiles2/' #folder path
-#path='/Users/shijieli/Desktop/project1/csvfile_fermion_2/'
+# path='/Users/shijieli/Desktop/project1/csvfile_fermion_2/'
 #path='/Users/shijieli/Desktop/project1/tf/20220325_TF_dep_trial_1/csvfile/20220325_he_3_4_mix_evap_840_detune_765/'
-path='Z:/EXPERIMENT-DATA/2022_degenerate_He3_and_He4_mixture/he3_he4_mixture/20220325_TF_dep_trial_1/20220325_he_3_4_mix_evap_835_detune_765/'
+# path='Z:/EXPERIMENT-DATA/2022_degenerate_He3_and_He4_mixture/he3_he4_mixture/20220325_TF_dep_trial_1/20220325_he_3_4_mix_evap_820_detune_765/'
+# path='Z:/EXPERIMENT-DATA/2022_degenerate_He3_and_He4_mixture/he3_he4_mixture/20220325_TF_dep_trial_1/20220325_he_3_4_mix_evap_835_detune_765/'
+# path = 'Z:/EXPERIMENT-DATA/2022_degenerate_He3_and_He4_mixture/he3_he4_mixture/20220729_he3_4_vs_hold_time/'
+# path = 'Y:/TDC_user/ProgramFiles/my_read_tdc_gui_v1.0.1/dld_output/20230204_DFG_BEC_mix_evap_845_detune_369/'
+# path = 'RSPE-056334:/TDC_user/ProgramFiles/my_read_tdc_gui_v1.0.1/dld_output/20230204_DFG_BEC_mix_evap_845_detune_369/'
+# path ='D:/testing_code_can_delete_anytime_tony_20230215/20230207_BEC_DFG_368.5_to_369_He3_0.8325_evap/'
+# path = 'D:/testing_code_can_delete_anytime_tony_20230215/20230214_BEC_DFG_368MHz_85nK_0.846_evap/'
+# path = 'Z:/EXPERIMENT-DATA/2022_degenerate_He3_and_He4_mixture/he3_he4_mixture/20220811_he3_he4_data_1/20220808_evap_855_detune_fracN_368.10/mix_shots_long/'
+path = 'D:/testing_code_can_delete_anytime_tony_20230215/20230207_BEC_DFG_368.5_to_369_He3_0.8325_evap/'
+
+
 bins=15
 hist_upper=delta_t
-[t_min,t_max]=[0.4,0.44]
+[t_min,t_max]=[0.4,0.43]
+# [t_min,t_max]=[0.4,0.6]
+# [t_min,t_max]=[0.426,0.436]
+
 #----------------
 def takeSize(i):
-    if path[-1] == '/':
-        return os.path.getsize(path+i)
-    else:
-        return os.path.getsize(path+'/'+i)
+    return os.path.getsize(path+i)
 
 def task0(file):
     with open(path+file) as csvfile:
         reader = csv.reader(csvfile)
         table = [ row for row in reader]
+        print(file)
         txy_temp=np.loadtxt(path+file,delimiter=',')#For csv files. For other types of files just change the delimiter.
+        txy_temp=txy_temp.reshape(-1,3)
         txy=txy_temp[np.where((txy_temp[:,0]>t_min) & (txy_temp[:,0]<t_max))]
     pairs=ctry2.task(txy)[0]
     return [txy,pairs]
@@ -81,7 +95,8 @@ def write_file(list0,name):
     return
 
 def plot_errorbar(x,y,error):
-    plt.errorbar(x,y,yerr=error,fmt='o',ms=4,capsize=3)
+    # plt.errorbar(x,y,yerr=error,fmt='o',ms=4,capsize=3)
+    plt.plot(x,y,'o')
     plt.xlabel(r'$\delta t(s)$')
     plt.ylabel(r'$g(\delta t)$')
     plt.grid()
@@ -156,7 +171,7 @@ def xlist(bins0):#400
     return list(time)
 
 def hist(bins):
-    hist_g=np.histogram(pairs_G,bins,(0,hist_upper))
+    hist_g=np.histogram(pairs_g,bins,(0,hist_upper))
     hist_G=np.histogram(pairs_G,bins,(0,hist_upper))
     N=nomalization_profile(txy_pool)
     y=[hist_G[0][i]*N/hist_g[0][i] for i in range(bins)]
@@ -165,17 +180,19 @@ def hist(bins):
     plot_g(hist_G,hist_g)#506
 
 if __name__ == '__main__':
+    # files2=[i for i in os.listdir(path) if i[:5]=='d_' and os.path.getsize(path+i)>10000]#read csv files like 'data_1.csv'
     files2=[i for i in os.listdir(path) if i[:2]=='d_']# and os.path.getsize(path+i)>10000]#read csv files like 'data_1.csv'
     files2.sort(key=takeSize)
     files2.reverse()
-    indexs=pairs_index(len(files2))
+    #indexs=pairs_index(len(files2))
     #------------------
     #If there are 1,600 files.
-    # files2=files2[0:1600]
-    # indexs0=pairs_index(100)
+    files2=files2[0:100]
+    # indexs0=pairs_index(12)
+    indexs=pairs_index(len(files2))
     # indexs=indexs0
     # for i in range(1,16):
-    #     indexs=np.concatenate((indexs,indexs0+i*100),axis=0)
+    #     indexs=np.concatenate((indexs,indexs+i*100),axis=0)
     #------------------
     indexs=[[i[1],i[0]] for i in indexs]+[i for i in indexs]
     # indexs=[]
@@ -183,28 +200,29 @@ if __name__ == '__main__':
     print("Cores:" + str(num_cores)+'\nTask1:' +str(len(files2)))
     pool = mp.Pool(num_cores) #Cheack the number of cores.
     txy_pool=[]
-    # results=[pool.apply_async(task0, args=[names]) for names in files2]
-    results=[task0(names) for names in files2]
+    results=[pool.apply_async(task0, args=[names]) for names in files2]
+    # results=[task0(names) for names in files2]
     pairs_G=[]
     aa=[]
     hist_G=[]
     start_t = datetime.datetime.now()
     for p in results: #Parallel calculating for G2
-        # a=p.get()
-        a = p
+        a=p.get()
+        # a=p
         txy_pool.append(a[0])
         aa.append(np.histogram(a[1],bins,(0,hist_upper))[0])
         pairs_G.extend(a[1])
-        
     file_length=[i.shape[0] for i in txy_pool]
     sum_0=sum([pow(i,1.85) for i in file_length])
     file_length_power=[pow(i,1.85)*len(files2)/sum_0 for i in file_length]#1.85
     print('Task2:'+str(len(indexs)))
     results=[pool.apply_async(ctry2.task_2, args=[txy_pool[i[0]],txy_pool[i[1]]]) for i in indexs]
+    # results=[ctry2.task_2(txy_pool[i[0]],txy_pool[i[1]]) for i in tqdm(indexs)]
     hist_g=np.zeros(bins)
     #pairs_g=read_file(path+'data/'+'small_g_2022-08-24 20:09:36.txt') #read files if data saved.
     for p in results: #Parallel calculating for normalisation profile
         a=p.get()
+        # a=p
         hist_g+=a
     end_t = datetime.datetime.now()
     #write_file(pairs_G,'big_G_'+str(end_t)[0:19]) #save files
@@ -219,4 +237,4 @@ if __name__ == '__main__':
     #[error_0,y]=task_2_1(aa)#For x or y axis
     error_0=task_2_2()#2d
     plot_errorbar(hist_G[1][1:],y,error_0)
-    #tlist(1000,0.4,0.5) #TOF (bins,tmin,tmax)
+    # tlist(1000,0.4,0.5) #TOF (bins,tmin,tmax)
